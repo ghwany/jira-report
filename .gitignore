@@ -145,4 +145,4 @@ sample.py
 *.bak
 *.back
 migrations/
-ec2/
+*.xlsx
