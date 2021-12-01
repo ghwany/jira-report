@@ -1,19 +1,20 @@
 from datetime import datetime, timedelta, timezone
+import json, sys
 
 now = datetime.now(tz=timezone.utc)
 
 START_DATE = now - timedelta(weeks=1)
 END_DATE = now + timedelta(days=1)
 
-JIRA_SERVER = "https://bighitcorp.atlassian.net"
-JIRA_REQ_URL = '/browse/'
 JIRA_ID = "*****"
 JIRA_TOKEN = "*****"
-JIRA_PROJECT = "*****"
+JIRA_SERVER = "https://bighitcorp.atlassian.net"
+JIRA_REQ_URL = '/browse/'
+JIRA_PROJECT = "WEVSEC"
 JIRA_PROJECT_STATUS = ['Open', 'TO DO', '작업 중', 'REPORTING', 'IN REVIEW', 'WAITING FOR RESPONSE', '완료', 'BLOCKED']
 JIRA_JQL = 'project = {} AND ' \
            'status in ({}) AND ' \
-           'type in (Task, Sub-task) ' \
+           'type in (Task, Sub-task) AND ' \
            'ORDER BY assignee ASC, component ASC, status ASC, created DESC'.format(
     JIRA_PROJECT, ', '.join(f'"{s}"' for s in JIRA_PROJECT_STATUS))
 
@@ -32,3 +33,10 @@ def get_jira_alias_issue_status(status: str):
         (k for k, v in JIRA_ALIAS_ISSUE_STATUS.items() if status in v),
         status
     )
+
+
+# Secrets load
+with open('config/secrets.json') as fs:
+    secrets = json.loads(fs.read())
+    for key, value in secrets.items():
+        setattr(sys.modules[__name__], key, value)

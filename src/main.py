@@ -7,7 +7,7 @@ import xlsxwriter
 import re
 import argparse
 
-from config.prod import *
+from config.local import *
 
 
 def get_comments(issue_comments, from_date, to_date):
@@ -240,7 +240,8 @@ if __name__ == '__main__':
         for idx, ticket in result_issues.iterrows():
             # assignee
             ticket_assignee = ticket['assignee'].split('/')[0]
-            if EXPORT_REPORTER and ticket_assignee not in EXPORT_REPORTER:
+            # 특정 보고자만 추출, next로 검사하는 이유는 동명이인의 경우 이름뒤에 알파벳이 붙기 때문에 보고자 이름이 포함되면 추출
+            if EXPORT_REPORTER and not next((i for i in EXPORT_REPORTER.split(',') if i in ticket_assignee), None):
                 continue
 
             # 보고자 별로 시트를 분리하여 작성
