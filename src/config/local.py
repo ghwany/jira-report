@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-import json, sys
+import json, sys, os
 
 now = datetime.now(tz=timezone.utc)
 
@@ -14,10 +14,9 @@ JIRA_PROJECT = "WEVSEC"
 JIRA_PROJECT_STATUS = ['Open', 'TO DO', '작업 중', 'REPORTING', 'IN REVIEW', 'WAITING FOR RESPONSE', '완료', 'BLOCKED']
 JIRA_JQL = 'project = {} AND ' \
            'status in ({}) AND ' \
-           'type in (Task, Sub-task) AND ' \
+           'type in (Task, Sub-task) ' \
            'ORDER BY assignee ASC, component ASC, status ASC, created DESC'.format(
     JIRA_PROJECT, ', '.join(f'"{s}"' for s in JIRA_PROJECT_STATUS))
-
 # Key: 별칭, Value[Array]: 별칭으로 변경할 상태 값들
 JIRA_ALIAS_ISSUE_STATUS = {
     '대기중': ['Waiting for Response', 'Blocked'],
@@ -36,7 +35,7 @@ def get_jira_alias_issue_status(status: str):
 
 
 # Secrets load
-with open('config/secrets.json') as fs:
+with open(os.sep.join(__file__.split(os.sep)[:-1] + ['secrets.json'])) as fs:
     secrets = json.loads(fs.read())
     for key, value in secrets.items():
         setattr(sys.modules[__name__], key, value)
