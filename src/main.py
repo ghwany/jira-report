@@ -164,20 +164,28 @@ def set_worksheet_ticket_comment(worksheet, comments,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='JIRA 주간보고 엑셀 추출')
-    parser.add_argument('--reporter', '-r', required=False, default='', help='특정 보고자들(쉼표로 구분)만 추출 [초기값: 빈값(모두)]')
+    parser.add_argument('--reporter', '-r', required=False, help='특정 보고자들(쉼표로 구분)만 추출 [초기값: 빈값(모두)]')
     parser.add_argument('--separate', '-s', required=False, default=True, help='보고자를 시트별로 추출 [초기값: True]')
-    parser.add_argument('--output', '-o', required=False, default=None, help='엑셀 파일 생성 경로')
-    parser.add_argument('--jira-id', '-i', required=False, default=JIRA_ID, help='JIRA ID')
-    parser.add_argument('--jira-token', '-t', required=False, default=JIRA_TOKEN, help='JIRA Access Key')
+    parser.add_argument('--output', '-o', required=False, help='엑셀 파일 생성 경로')
+    parser.add_argument('--date-range', '-d', required=False, help='추출할 티켓 마지막 수정 일자 [날짜(YYYY-MM-DD),날짜]')
     parser.add_argument('--jira-proj', '-p', required=False, default=JIRA_PROJECT, help='JIRA Project')
     parser.add_argument('--jira-url', '-u', required=False, default=JIRA_SERVER, help='JIRA Server URI')
     args = parser.parse_args()
 
-    JIRA_ID = args.jira_id
-    JIRA_TOKEN = args.jira_token
-    JIRA_PROJECT = args.jira_proj
+    if args.jira_proj:
+        JIRA_PROJECT = args.jira_proj
+    JIRA_ID = JIRA_PROJECT_AUTH[JIRA_PROJECT]['ID']
+    JIRA_TOKEN = JIRA_PROJECT_AUTH[JIRA_PROJECT]['TOKEN']
     JIRA_SERVER = args.jira_url
     JIRA_JQL = f'project = {JIRA_PROJECT} AND {JIRA_JQL}'
+
+    if not args.date_range:
+        START_DATE = now - timedelta(weeks=1)
+        END_DATE = now + timedelta(days=1)
+    else:
+        start_date, end_date = args.date_range.split(',')
+        START_DATE = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        END_DATE = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
 
     EXPORT_REPORTER = args.reporter
     OUTPUT_FILE = args.output or f'../output/jira-{JIRA_PROJECT}-{EXPORT_REPORTER or "all"}-{int(now.timestamp())}.xlsx'

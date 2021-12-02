@@ -3,11 +3,7 @@ import json, sys, os
 
 now = datetime.now(tz=timezone.utc)
 
-START_DATE = now - timedelta(weeks=1)
-END_DATE = now + timedelta(days=1)
-
-JIRA_ID = "*****"
-JIRA_TOKEN = "*****"
+JIRA_PROJECT_AUTH = {}
 JIRA_SERVER = "https://bighitcorp.atlassian.net"
 JIRA_REQ_URL = '/browse/'
 JIRA_PROJECT = "WEVSEC"
