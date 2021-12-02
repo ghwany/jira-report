@@ -12,11 +12,9 @@ JIRA_SERVER = "https://bighitcorp.atlassian.net"
 JIRA_REQ_URL = '/browse/'
 JIRA_PROJECT = "WEVSEC"
 JIRA_PROJECT_STATUS = ['Open', 'TO DO', '작업 중', 'REPORTING', 'IN REVIEW', 'WAITING FOR RESPONSE', '완료', 'BLOCKED']
-JIRA_JQL = 'project = {} AND ' \
-           'status in ({}) AND ' \
+JIRA_JQL = 'status in ({}) AND ' \
            'type in (Task, Sub-task) ' \
-           'ORDER BY assignee ASC, component ASC, status ASC, created DESC'.format(
-    JIRA_PROJECT, ', '.join(f'"{s}"' for s in JIRA_PROJECT_STATUS))
+           'ORDER BY assignee ASC, component ASC, status ASC, created DESC'.format(', '.join(f'"{s}"' for s in JIRA_PROJECT_STATUS))
 # Key: 별칭, Value[Array]: 별칭으로 변경할 상태 값들
 JIRA_ALIAS_ISSUE_STATUS = {
     '대기중': ['Waiting for Response', 'Blocked'],

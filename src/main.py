@@ -167,12 +167,24 @@ if __name__ == '__main__':
     parser.add_argument('--reporter', '-r', required=False, default='', help='특정 보고자들(쉼표로 구분)만 추출 [초기값: 빈값(모두)]')
     parser.add_argument('--separate', '-s', required=False, default=True, help='보고자를 시트별로 추출 [초기값: True]')
     parser.add_argument('--output', '-o', required=False, default=None, help='엑셀 파일 생성 경로')
+    parser.add_argument('--jira-id', '-i', required=False, default=JIRA_ID, help='JIRA ID')
+    parser.add_argument('--jira-token', '-t', required=False, default=JIRA_TOKEN, help='JIRA Access Key')
+    parser.add_argument('--jira-proj', '-p', required=False, default=JIRA_PROJECT, help='JIRA Project')
+    parser.add_argument('--jira-url', '-u', required=False, default=JIRA_SERVER, help='JIRA Server URI')
     args = parser.parse_args()
 
+    JIRA_ID = args.jira_id
+    JIRA_TOKEN = args.jira_token
+    JIRA_PROJECT = args.jira_proj
+    JIRA_SERVER = args.jira_url
+    JIRA_JQL = f'project = {JIRA_PROJECT} AND {JIRA_JQL}'
+
     EXPORT_REPORTER = args.reporter
+    OUTPUT_FILE = args.output or f'../output/jira-{JIRA_PROJECT}-{EXPORT_REPORTER or "all"}-{int(now.timestamp())}.xlsx'
     SEPARATE_REPORTER_BY_SHEET = args.separate
 
-    OUTPUT_FILE = args.output or f'../output/jira-weekly-{EXPORT_REPORTER or "all"}-{now.strftime("%Y-%m-%d")}.xlsx'
+    if EXPORT_REPORTER:
+        EXPORT_REPORTER = EXPORT_REPORTER.split(',')
 
     try:
         jira = JIRA(server=JIRA_SERVER, basic_auth=(JIRA_ID, JIRA_TOKEN))
@@ -191,6 +203,9 @@ if __name__ == '__main__':
 
             # 이슈 업데이트 날짜가 포함되지 않거나, 날짜 안에 생성한 댓글, 작업로그가 없으면 포함하지 않음
             if not (START_DATE <= issue_updated_date <= END_DATE):
+                continue
+            assignee = str(issue.fields.assignee).split('/')[0]
+            if EXPORT_REPORTER and not next((i for i in EXPORT_REPORTER if i in assignee), None):
                 continue
 
             comments = get_comments(jira.comments(issue), START_DATE, END_DATE)
@@ -241,7 +256,7 @@ if __name__ == '__main__':
             # assignee
             ticket_assignee = ticket['assignee'].split('/')[0]
             # 특정 보고자만 추출, next로 검사하는 이유는 동명이인의 경우 이름뒤에 알파벳이 붙기 때문에 보고자 이름이 포함되면 추출
-            if EXPORT_REPORTER and not next((i for i in EXPORT_REPORTER.split(',') if i in ticket_assignee), None):
+            if EXPORT_REPORTER and not next((i for i in EXPORT_REPORTER if i in ticket_assignee), None):
                 continue
 
             # 보고자 별로 시트를 분리하여 작성
@@ -281,8 +296,7 @@ if __name__ == '__main__':
                                          is_worklog=True,
                                          is_write_reporter=not SEPARATE_REPORTER_BY_SHEET)
 
-            is_last_row = idx == result_issues.index[-1]
-            is_draw_merge_column = component != ticket['components'] or assignee != ticket_assignee or is_last_row
+            is_draw_merge_column = component != ticket['components'] or assignee != ticket_assignee
 
             if row == data_start_row:
                 # 시트에 첫 티켓을 쓸 때 이전 티켓과 보고자가 다를 경우 이전 티켓 보고자 시트에 이전 티켓 정보를 씀
@@ -307,5 +321,12 @@ if __name__ == '__main__':
             # 보고자 시트에서 다음 티켓을 기록할 행을 worksheets에 저장
             if SEPARATE_REPORTER_BY_SHEET:
                 worksheets[ticket_assignee]['row'] = row
+
+        # 마지막 티켓의 구분을 추가하기 위함
+        if assignee in worksheets:
+            set_worksheet_component(
+                worksheets[assignee]['worksheet'],
+                assignee, component,
+                row, col, new_assignee_start_row, not SEPARATE_REPORTER_BY_SHEET)
 
         workbook.close()
