@@ -65,7 +65,7 @@ def get_worklogs(issue_worklogs, from_date, to_date):
     return result_comment
 
 
-def set_worksheet_header(worksheet, is_write_reporter: bool = True):
+def set_worksheet_header(worksheet, is_write_reporter: bool = True, components: set = None):
     # Title Header
     hcol, hrow = 0, 0
     worksheet.write(
@@ -76,6 +76,16 @@ def set_worksheet_header(worksheet, is_write_reporter: bool = True):
     hrow += 1
 
     corr_col = 0 if is_write_reporter else 2
+
+    if components:
+        worksheet.write(hrow, hcol, '구분', table_header)
+        worksheet.merge_range(hrow, hcol + 1, hrow, hcol + 8 - corr_col, '주요 업무 내용', table_header)
+        hrow += 1
+        for c in components:
+            worksheet.write(hrow, hcol, c)
+            worksheet.merge_range(hrow, hcol + 1, hrow, hcol + 8 - corr_col, '')
+            hrow += 1
+        hrow += 1
 
     # Column Header
     worksheet.merge_range(hrow, hcol, hrow + 1, hcol, '구분', table_header)
@@ -260,6 +270,16 @@ if __name__ == '__main__':
         new_assignee_start_row = 0
         data_start_row = 3
 
+        if SEPARATE_REPORTER_BY_SHEET:
+            for idx, ticket in result_issues.iterrows():
+                # assignee
+                ticket_assignee = ticket['assignee'].split('/')[0]
+                component = ticket['components'] or NO_COMPONENT
+                if ticket_assignee not in worksheets:
+                    worksheet = workbook.add_worksheet(ticket_assignee)
+                    worksheets[ticket_assignee] = {'worksheet': worksheet, 'components': set()}
+                worksheets[ticket_assignee]['components'].add(component)
+
         for idx, ticket in result_issues.iterrows():
             # assignee
             ticket_assignee = ticket['assignee'].split('/')[0]
@@ -269,20 +289,16 @@ if __name__ == '__main__':
 
             # 보고자 별로 시트를 분리하여 작성
             if SEPARATE_REPORTER_BY_SHEET:
-                if ticket_assignee not in worksheets:
-                    # 보고자 시트가 없을 때 헤더를 제외한 행부터 시작
-                    row = data_start_row
-                    worksheet = workbook.add_worksheet(ticket_assignee)
-                    worksheets[ticket_assignee] = {'worksheet': worksheet}
-                    set_worksheet_header(worksheet, not SEPARATE_REPORTER_BY_SHEET)
-                else:
-                    # 보고자 시트가 있을 때 이전 작업 다음 행부터 시작
-                    worksheet = worksheets[ticket_assignee]['worksheet']
+                worksheet = worksheets[ticket_assignee]['worksheet']
+                if 'row' in worksheets[ticket_assignee]:
                     row = worksheets[ticket_assignee]['row']
+                else:
+                    row = len(worksheets[ticket_assignee]['components']) + 5
+                    set_worksheet_header(worksheet, not SEPARATE_REPORTER_BY_SHEET, worksheets[ticket_assignee]['components'])
             # 모든 보고자를 Summary 시트에 작성
             else:
                 if 'Summary' not in worksheets:
-                    row = data_start_row
+                    row = 3
                     worksheet = workbook.add_worksheet('Summary')
                     worksheets['Summary'] = {'worksheet': worksheet}
                     set_worksheet_header(worksheet, not SEPARATE_REPORTER_BY_SHEET)
@@ -306,7 +322,7 @@ if __name__ == '__main__':
 
             is_draw_merge_column = component != ticket['components'] or assignee != ticket_assignee
 
-            if row == data_start_row:
+            if 'row' not in worksheets[ticket_assignee]:
                 # 시트에 첫 티켓을 쓸 때 이전 티켓과 보고자가 다를 경우 이전 티켓 보고자 시트에 이전 티켓 정보를 씀
                 if SEPARATE_REPORTER_BY_SHEET and assignee != ticket_assignee and assignee in worksheets:
                     set_worksheet_component(
